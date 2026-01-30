@@ -1,0 +1,102 @@
+=================================================================
+  MSA SAMPLE – SUMMARY REPORT
+=================================================================
+Universe MSAs:        393
+Sample size:          52
+Population coverage:  133,110,801 / 289,564,245 (46.0%)
+
+── Selection method breakdown ──
+selection_method
+stratified_random    40
+mandatory_top10      10
+coverage_boost        2
+
+── Population stratum ──
+pop_stratum
+Small     26
+Large     15
+Mega       9
+Medium     2
+
+── Census region ──
+census_region
+South        21
+Midwest      12
+West         11
+Northeast     6
+Unknown       2
+
+── Rail presence ──
+has_rail
+False    34
+True     18
+
+── Shared mobility presence ──
+has_shared_mobility
+False    39
+True     13
+
+── Sample weight summary ──
+count    52.000000
+mean      6.788462
+std       4.874115
+min       1.000000
+25%       1.000000
+50%      10.090909
+75%      10.857143
+max      15.000000
+
+── Selected MSAs ──
+  35620  New York-Newark-Jersey City, NY-NJ                      pop=  19,756,722  method=mandatory_top10
+  31080  Los Angeles-Long Beach-Anaheim, CA                      pop=  13,012,469  method=mandatory_top10
+  16980  Chicago-Naperville-Elgin, IL-IN                         pop=   9,359,555  method=mandatory_top10
+  19100  Dallas-Fort Worth-Arlington, TX                         pop=   7,807,555  method=mandatory_top10
+  26420  Houston-Pasadena-The Woodlands, TX                      pop=   7,274,714  method=mandatory_top10
+  47900  Washington-Arlington-Alexandria, DC-VA-MD-WV            pop=   6,263,796  method=mandatory_top10
+  37980  Philadelphia-Camden-Wilmington, PA-NJ-DE-MD             pop=   6,241,882  method=mandatory_top10
+  12060  Atlanta-Sandy Springs-Roswell, GA                       pop=   6,176,937  method=mandatory_top10
+  33100  Miami-Fort Lauderdale-West Palm Beach, FL               pop=   6,138,876  method=mandatory_top10
+  38060  Phoenix-Mesa-Chandler, AZ                               pop=   4,941,206  method=mandatory_top10
+  14460  Boston-Cambridge-Newton, MA-NH                          pop=   4,917,661  method=stratified_random
+  41860  San Francisco-Oakland-Fremont, CA                       pop=   4,653,593  method=coverage_boost
+  40140  Riverside-San Bernardino-Ontario, CA                    pop=   4,637,725  method=coverage_boost
+  33460  Minneapolis-St. Paul-Bloomington, MN-WI                 pop=   3,693,351  method=stratified_random
+  12580  Baltimore-Columbia-Towson, MD                           pop=   2,839,409  method=stratified_random
+  41180  St. Louis, MO-IL                                        pop=   2,809,414  method=stratified_random
+  38900  Portland-Vancouver-Hillsboro, OR-WA                     pop=   2,510,529  method=stratified_random
+  40900  Sacramento-Roseville-Folsom, CA                         pop=   2,406,563  method=stratified_random
+  12420  Austin-Round Rock-San Marcos, TX                        pop=   2,357,497  method=stratified_random
+  17410  Cleveland, OH                                           pop=   2,171,978  method=stratified_random
+  41980  San Juan-Bayamón-Caguas, PR                             pop=   2,063,795  method=stratified_random
+  34980  Nashville-Davidson--Murfreesboro--Franklin, TN          pop=   2,043,713  method=stratified_random
+  33340  Milwaukee-Waukesha, WI                                  pop=   1,566,361  method=stratified_random
+  40380  Rochester, NY                                           pop=   1,058,875  method=stratified_random
+  16700  Charleston-North Charleston, SC                         pop=     817,756  method=stratified_random
+  19660  Deltona-Daytona Beach-Ormond Beach, FL                  pop=     689,939  method=stratified_random
+  28660  Killeen-Temple, TX                                      pop=     485,850  method=stratified_random
+  18580  Corpus Christi, TX                                      pop=     446,797  method=stratified_random
+  42340  Savannah, GA                                            pop=     412,089  method=stratified_random
+  17300  Clarksville, TN-KY                                      pop=     328,626  method=stratified_random
+  16300  Cedar Rapids, IA                                        pop=     275,960  method=stratified_random
+  25940  Hilton Head Island-Bluffton-Port Royal, SC              pop=     222,781  method=stratified_random
+  32420  Mayagüez, PR                                            pop=     211,487  method=stratified_random
+  49740  Yuma, AZ                                                pop=     207,685  method=stratified_random
+  29100  La Crosse-Onalaska, WI-MN                               pop=     169,945  method=stratified_random
+  45460  Terre Haute, IN                                         pop=     168,850  method=stratified_random
+  12620  Bangor, ME                                              pop=     153,571  method=stratified_random
+  35660  Niles, MI                                               pop=     153,411  method=stratified_random
+  34060  Morgantown, WV                                          pop=     140,724  method=stratified_random
+  43300  Sherman-Denison, TX                                     pop=     139,988  method=stratified_random
+  48140  Wausau, WI                                              pop=     138,067  method=stratified_random
+  48680  Wildwood-The Villages, FL                               pop=     137,536  method=stratified_random
+  44220  Springfield, OH                                         pop=     135,445  method=stratified_random
+  27780  Johnstown, PA                                           pop=     132,355  method=stratified_random
+  43420  Sierra Vista-Douglas, AZ                                pop=     125,458  method=stratified_random
+  22140  Farmington, NM                                          pop=     121,178  method=stratified_random
+  34100  Morristown, TN                                          pop=     120,765  method=stratified_random
+  13220  Beckley, WV                                             pop=     113,653  method=stratified_random
+  44940  Sumter, SC                                              pop=     104,853  method=stratified_random
+  30620  Lima, OH                                                pop=     101,685  method=stratified_random
+  24420  Grants Pass, OR                                         pop=      88,069  method=stratified_random
+  47460  Walla Walla, WA                                         pop=      62,102  method=stratified_random
+=================================================================
