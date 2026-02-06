@@ -1,8 +1,11 @@
 """
 Fetch shared-mobility (bikeshare / scooter) operator presence from
 MobilityData's GBFS systems catalog.
+
+Uses dynamic Census-based city/state matching (same approach as NTD module).
 """
 import logging
+import re
 import pandas as pd
 import requests
 
@@ -10,58 +13,114 @@ from metro_sampler.config import GBFS_CATALOG_URL
 
 log = logging.getLogger(__name__)
 
-# Manual mapping: GBFS system location string fragments -> CBSA codes
-# Extend as needed.
-_CITY_CBSA = {
-    "new york": "35620", "nyc": "35620", "jersey city": "35620",
-    "los angeles": "31080", "la ": "31080", "santa monica": "31080",
-    "chicago": "16980",
-    "dallas": "19100", "fort worth": "19100",
-    "houston": "26420",
-    "washington": "47900", "arlington, va": "47900", "dc": "47900",
-    "miami": "33100", "fort lauderdale": "33100",
-    "philadelphia": "37980",
-    "atlanta": "12060",
-    "boston": "14460", "cambridge": "14460",
-    "phoenix": "38060", "tempe": "38060", "mesa": "38060",
-    "san francisco": "41860", "oakland": "41860", "berkeley": "41860",
-    "riverside": "40140", "san bernardino": "40140",
-    "detroit": "19820",
-    "seattle": "42660",
-    "minneapolis": "33460", "st. paul": "33460",
-    "san diego": "41740",
-    "tampa": "45300", "st. petersburg": "45300",
-    "denver": "19740",
-    "st. louis": "41180",
-    "baltimore": "12580",
-    "orlando": "36740",
-    "charlotte": "16740",
-    "san antonio": "41700",
-    "portland": "38900",
-    "sacramento": "40900",
-    "pittsburgh": "38300",
-    "austin": "12420",
-    "kansas city": "28140",
-    "cleveland": "17460",
-    "columbus": "18140",
-    "indianapolis": "26900",
-    "las vegas": "29820",
-    "nashville": "34980",
-    "norfolk": "47260",
-    "providence": "39300",
-    "milwaukee": "33340",
-    "salt lake": "41620",
-    "tucson": "46060",
-    "omaha": "36540",
-    "raleigh": "39580",
-    "boise": "14260",
-    "albuquerque": "10740",
-    "el paso": "21340",
-    "spokane": "44060",
-    "fargo": "22020",
-    "lincoln, ne": "30700",
-    "oklahoma city": "36420",
-}
+# ── Census-based city/state index (shared with data_ntd.py) ─────────────────
+_CITY_CBSA_CACHE: dict | None = None
+
+
+def _build_city_cbsa_index() -> dict:
+    """Build a mapping from (city, state) -> CBSA code using Census MSA names.
+    Also builds city-only index for unambiguous matches."""
+    global _CITY_CBSA_CACHE
+    if _CITY_CBSA_CACHE is not None:
+        return _CITY_CBSA_CACHE
+
+    from metro_sampler.config import CENSUS_BASE, CENSUS_YEAR
+
+    try:
+        url = f"{CENSUS_BASE}/{CENSUS_YEAR}/acs/acs5"
+        params = {
+            "get": "NAME,B01003_001E",
+            "for": "metropolitan statistical area/micropolitan statistical area:*",
+        }
+        resp = requests.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+        header, *data = resp.json()
+        census = pd.DataFrame(data, columns=header)
+        census = census[census["NAME"].str.contains("Metro", case=False, na=False)]
+        census.columns = ["msa_name", "population", "cbsa_code"]
+    except Exception as exc:
+        log.warning("Could not fetch Census MSAs for GBFS matching: %s", exc)
+        _CITY_CBSA_CACHE = {"city_state": {}, "city_only": {}}
+        return _CITY_CBSA_CACHE
+
+    def _parse_msa(msa_name):
+        clean = re.sub(r"\s*Metro(politan)?\s*Area$", "", msa_name)
+        parts = clean.split(",")
+        city_part = parts[0].strip()
+        state_part = parts[1].strip() if len(parts) > 1 else ""
+        cities = [c.strip().lower() for c in re.split(r"[-/]", city_part)]
+        states = [s.strip().upper() for s in re.split(r"[-/]", state_part)]
+        return cities, states
+
+    city_state_idx: dict[tuple[str, str], str] = {}
+    city_only: dict[str, str] = {}
+    city_ambig: set[str] = set()
+
+    for _, row in census.iterrows():
+        cities, states = _parse_msa(row["msa_name"])
+        cbsa = row["cbsa_code"]
+        for city in cities:
+            for state in states:
+                city_state_idx.setdefault((city, state), cbsa)
+            if city in city_ambig:
+                continue
+            if city in city_only and city_only[city] != cbsa:
+                city_ambig.add(city)
+                del city_only[city]
+            else:
+                city_only[city] = cbsa
+
+    _CITY_CBSA_CACHE = {
+        "city_state": city_state_idx,
+        "city_only": city_only,
+    }
+    log.info("  Built GBFS city->CBSA index: %d city+state keys, %d unambiguous city keys",
+             len(city_state_idx), len(city_only))
+    return _CITY_CBSA_CACHE
+
+
+def _match_location_to_cbsa(location: str) -> str:
+    """Parse a GBFS location string and match to CBSA code.
+
+    Location formats vary:
+      - "Miami, FL"
+      - "Austin, TX, USA"
+      - "Washington, DC, US"
+      - "New York, NY"
+    """
+    if not location or pd.isna(location):
+        return ""
+
+    idx = _build_city_cbsa_index()
+    if not idx or not idx.get("city_state"):
+        return ""
+
+    # Normalize and parse
+    loc = location.strip()
+    parts = [p.strip() for p in loc.split(",")]
+
+    # Extract city (first part) and state (second part, if 2-letter code)
+    city = parts[0].lower() if parts else ""
+    state = ""
+    for p in parts[1:]:
+        p_clean = p.strip().upper()
+        if len(p_clean) == 2 and p_clean.isalpha():
+            state = p_clean
+            break
+
+    # Try city+state first
+    if city and state:
+        cbsa = idx["city_state"].get((city, state))
+        if cbsa:
+            return cbsa
+
+    # Fallback: unambiguous city match
+    if city:
+        cbsa = idx["city_only"].get(city)
+        if cbsa:
+            return cbsa
+
+    return ""
 
 
 def fetch_gbfs_systems() -> pd.DataFrame:
@@ -69,7 +128,11 @@ def fetch_gbfs_systems() -> pd.DataFrame:
     Returns DataFrame: system_id, name, location, cbsa_code
     """
     try:
-        df = pd.read_csv(GBFS_CATALOG_URL)
+        # Use requests to handle SSL more gracefully than pandas.read_csv
+        resp = requests.get(GBFS_CATALOG_URL, timeout=30)
+        resp.raise_for_status()
+        from io import StringIO
+        df = pd.read_csv(StringIO(resp.text))
     except Exception as exc:
         log.warning("Could not fetch GBFS catalog: %s – using fallback", exc)
         return _builtin_gbfs()
@@ -82,27 +145,32 @@ def fetch_gbfs_systems() -> pd.DataFrame:
     elif "location" in df.columns:
         df = df[df["location"].str.contains("US|United States", case=False, na=False)].copy()
 
-    df["cbsa_code"] = df.apply(_match_cbsa, axis=1)
+    # Match locations to CBSA codes using Census-based index
+    if "location" in df.columns:
+        df["cbsa_code"] = df["location"].apply(_match_location_to_cbsa)
+    else:
+        df["cbsa_code"] = ""
+
+    # Count matches before filtering
+    n_total = len(df)
+    n_matched = (df["cbsa_code"] != "").sum()
+
     df = df[df["cbsa_code"] != ""].copy()
 
     keep = ["system_id", "name", "location", "cbsa_code"]
     for c in keep:
         if c not in df.columns:
             df[c] = ""
+
+    log.info("  Matched %d of %d US GBFS systems to a CBSA", n_matched, n_total)
     return df[keep]
-
-
-def _match_cbsa(row) -> str:
-    """Try to match a GBFS system to a CBSA code via location/name text."""
-    text = " ".join(str(row.get(c, "")) for c in ["location", "name"]).lower()
-    for fragment, cbsa in _CITY_CBSA.items():
-        if fragment in text:
-            return cbsa
-    return ""
 
 
 def gbfs_by_cbsa(systems: pd.DataFrame) -> pd.DataFrame:
     """Aggregate: count and list of operators per CBSA."""
+    if len(systems) == 0:
+        return pd.DataFrame(columns=["cbsa_code", "n_shared_mobility",
+                                      "shared_mobility_list", "has_shared_mobility"])
     grouped = systems.groupby("cbsa_code").agg(
         n_shared_mobility=("name", "count"),
         shared_mobility_list=("name", lambda s: "; ".join(s.unique())),
@@ -111,30 +179,14 @@ def gbfs_by_cbsa(systems: pd.DataFrame) -> pd.DataFrame:
     return grouped
 
 
-# ── Fallback ────────────────────────────────────────────────────────────────
+# ── Fallback (only used if GBFS catalog fetch fails) ────────────────────────
 def _builtin_gbfs() -> pd.DataFrame:
+    """Minimal fallback - prefer live data."""
     rows = [
-        ("citi_bike_nyc", "Citi Bike", "New York, US", "35620"),
-        ("metro_bike_la", "Metro Bike Share", "Los Angeles, US", "31080"),
-        ("divvy_chicago", "Divvy", "Chicago, US", "16980"),
-        ("capital_bikeshare", "Capital Bikeshare", "Washington DC, US", "47900"),
-        ("bluebikes", "Bluebikes", "Boston, US", "14460"),
-        ("bay_wheels", "Bay Wheels", "San Francisco, US", "41860"),
-        ("nice_ride", "Nice Ride", "Minneapolis, US", "33460"),
-        ("bcycle_denver", "Denver B-cycle", "Denver, US", "19740"),
-        ("bcycle_austin", "Austin B-cycle", "Austin, US", "12420"),
-        ("indego", "Indego", "Philadelphia, US", "37980"),
-        ("cogo", "CoGo", "Columbus, US", "18140"),
-        ("relay_atlanta", "Relay", "Atlanta, US", "12060"),
-        ("healthy_ride", "Healthy Ride", "Pittsburgh, US", "38300"),
-        ("biketown", "BIKETOWN", "Portland, US", "38900"),
-        ("bcycle_charlotte", "Charlotte B-cycle", "Charlotte, US", "16740"),
-        ("lime_seattle", "Lime", "Seattle, US", "42660"),
-        ("bird_nashville", "Bird", "Nashville, US", "34980"),
-        ("lime_san_diego", "Lime", "San Diego, US", "41740"),
-        ("lime_salt_lake", "Lime", "Salt Lake City, US", "41620"),
-        ("pacers_indianapolis", "Pacers Bikeshare", "Indianapolis, US", "26900"),
-        ("bublr_milwaukee", "Bublr Bikes", "Milwaukee, US", "33340"),
-        ("greenbike_slc", "GREENbike", "Salt Lake City, US", "41620"),
+        ("citi_bike_nyc", "Citi Bike", "New York, NY", "35620"),
+        ("divvy_chicago", "Divvy", "Chicago, IL", "16980"),
+        ("capital_bikeshare", "Capital Bikeshare", "Washington, DC", "47900"),
+        ("bluebikes", "Bluebikes", "Boston, MA", "14460"),
+        ("bay_wheels", "Bay Wheels", "San Francisco, CA", "41860"),
     ]
     return pd.DataFrame(rows, columns=["system_id", "name", "location", "cbsa_code"])
