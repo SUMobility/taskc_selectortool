@@ -17,6 +17,11 @@ CENSUS_YEAR = 2023  # ACS year
 
 GBFS_CATALOG_URL = "https://github.com/MobilityData/gbfs/raw/master/systems.csv"
 
+# BTS (Bureau of Transportation Statistics) bikeshare / e-scooter systems
+# Socrata open-data endpoint – comprehensive, government-maintained
+BTS_SYSTEMS_URL = "https://data.bts.gov/resource/cqdc-cm7d.csv"
+BTS_YEAR = "2025"  # most recent year in the dataset
+
 TRANSITLAND_API_URL = "https://transit.land/api/v2/rest"
 TRANSITLAND_API_KEY = ""  # optional
 
