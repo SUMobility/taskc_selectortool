@@ -131,7 +131,7 @@ def _build_uza_cbsa_map() -> dict[str, str]:
         parts = clean.split(",")
         city_part = parts[0].strip()
         state_part = parts[1].strip() if len(parts) > 1 else ""
-        cities = [c.strip().lower() for c in re.split(r"[-/]", city_part)]
+        cities = [c.strip().lower().replace(".", "") for c in re.split(r"[-/]", city_part)]
         states = [s.strip().upper() for s in re.split(r"[-/]", state_part)]
         return cities, states
 
@@ -179,21 +179,28 @@ def _uza_to_cbsa(uza_name: str) -> str:
     parts = uza_name.split(",")
     city_part = parts[0].strip()
     state_part = parts[1].strip() if len(parts) > 1 else ""
-    cities = [c.strip().lower() for c in re.split(r"--|/", city_part)]
+    cities = [c.strip().lower().replace(".", "") for c in re.split(r"--|[-/]", city_part)]
     states = [s.strip().upper() for s in re.split(r"[-/]", state_part) if s.strip()]
 
-    # Try city+state first
+    # Try city+state first (exact)
     for city in cities:
         for state in states:
             cbsa = idx["city_state"].get((city, state))
             if cbsa:
                 return cbsa
 
-    # Fallback: unambiguous city match
+    # Fallback: unambiguous city match (exact)
     for city in cities:
         cbsa = idx["city_only"].get(city)
         if cbsa:
             return cbsa
+
+    # Fallback: substring match on city+state (catches e.g. "Honolulu" ⊂ "Urban Honolulu")
+    for city in cities:
+        for state in states:
+            for (ic, ist), cbsa in idx["city_state"].items():
+                if ist == state and (city in ic or ic in city):
+                    return cbsa
 
     return ""
 
