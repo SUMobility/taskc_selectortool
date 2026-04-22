@@ -11,6 +11,7 @@ Steps:
 import logging
 import numpy as np
 import pandas as pd
+import random
 
 from metro_sampler.config import (
     POP_STRATA,
@@ -69,7 +70,9 @@ def select_sample(msa_df: pd.DataFrame) -> pd.DataFrame:
     slots_left = TARGET_SAMPLE_SIZE - len(mandatory)
 
     # Proportional allocation across composite strata
-    rng = np.random.default_rng(RANDOM_SEED)
+    rng = np.random.default_rng(random.seed())
+    #this is more pseudorandom.
+    #To keep consistent values, change random.seed() to RANDOM_SEED, which is manually set in config.py
     stratum_counts = remaining_pool["stratum"].value_counts().to_dict()
     n_remaining = len(remaining_pool)
 

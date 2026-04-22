@@ -26,7 +26,7 @@ TRANSITLAND_API_URL = "https://transit.land/api/v2/rest"
 TRANSITLAND_API_KEY = ""  # optional
 
 # ── Sampling parameters ─────────────────────────────────────────────────────
-RANDOM_SEED = 42
+RANDOM_SEED = 42          # manually setting a random seed means it's not actually random. Using random.seed() instead in sampler.py
 TARGET_SAMPLE_SIZE = 50          # aim for 25-30
 MIN_SAMPLE_SIZE = 45
 MAX_SAMPLE_SIZE = 52

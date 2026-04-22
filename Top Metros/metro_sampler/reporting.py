@@ -73,7 +73,7 @@ def summary_report(sample: pd.DataFrame, universe: pd.DataFrame) -> str:
 def save_report(report_text: str, filename: str = "sample_report.txt") -> Path:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out = OUTPUT_DIR / filename
-    out.write_text(report_text)
+    out.write_text(report_text, encoding="utf-8")
     log.info("Wrote %s", out)
     return out
 
